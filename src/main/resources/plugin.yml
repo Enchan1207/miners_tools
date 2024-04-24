@@ -1,0 +1,5 @@
+main: me.enchan.miners_tools.MinersTools
+name: miners_tools
+version: "0.1.0"
+api: 1.16.2
+api-version: "1.17"
