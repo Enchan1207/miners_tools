@@ -14,7 +14,7 @@ public class MinersTools extends JavaPlugin {
         getLogger().info("Hello, SpigotMC!");
 
         // イベントリスナに登録
-        getServer().getPluginManager().registerEvents(new BlockBreakListener(), this);
+        getServer().getPluginManager().registerEvents(new PlayerInteractionListener(), this);
     }
 
     @Override

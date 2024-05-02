@@ -1,6 +1,3 @@
-//
-// ブロック破壊時の処理
-//
 package me.enchan.miners_tools;
 
 import org.bukkit.block.Block;
@@ -18,17 +15,23 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 
 /**
- * ブロック破壊イベントリスナ
+ * プレイヤーの操作時に発生したイベントを処理するリスナ
  */
-class BlockBreakListener implements Listener {
+class PlayerInteractionListener implements Listener {
 
+    /** 連鎖破壊を行うかどうか */
     boolean isEnabled = false;
+    // TODO: リスナ初期化時にDI
 
+    /**
+     * プレイヤーがブロックを破壊したとき
+     * 
+     * @param event
+     */
     @EventHandler
     public void onPlayerBreakBlock(BlockBreakEvent event) {
         // オフになっているなら何もしない
@@ -92,6 +95,11 @@ class BlockBreakListener implements Listener {
         event.getPlayer().giveExp(event.getExpToDrop() * brokenBlockCount);
     }
 
+    /**
+     * プレイヤーが右クリックしたとき
+     * 
+     * @param event
+     */
     @EventHandler
     public void onPlayerInteractToVoid(PlayerInteractEvent event) {
         // 虚空に向かって右クリックした場合のみ
