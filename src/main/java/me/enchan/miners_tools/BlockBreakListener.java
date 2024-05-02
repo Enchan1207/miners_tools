@@ -7,6 +7,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
@@ -94,7 +95,7 @@ class BlockBreakListener implements Listener {
     @EventHandler
     public void onPlayerInteractToVoid(PlayerInteractEvent event) {
         // 虚空に向かって右クリックした場合のみ
-        if (event.getClickedBlock() != null) {
+        if (event.getAction() != Action.RIGHT_CLICK_AIR) {
             return;
         }
 
