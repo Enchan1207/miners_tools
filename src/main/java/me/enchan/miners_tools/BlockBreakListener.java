@@ -99,6 +99,11 @@ class BlockBreakListener implements Listener {
             return;
         }
 
+        // オフハンドに何も持っていない場合のみ
+        if (event.getPlayer().getInventory().getItemInOffHand().getType() != Material.AIR) {
+            return;
+        }
+
         // メインハンドがツールの場合のみ
         String mainhandItemName = event.getPlayer().getInventory().getItemInMainHand().getType().name();
         String suffixes[] = { "_AXE", "_HOE", "_PICKAXE", "_SHOVEL" };
