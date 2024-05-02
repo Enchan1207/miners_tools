@@ -8,6 +8,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 
@@ -25,8 +26,15 @@ import org.bukkit.Material;
  */
 class BlockBreakListener implements Listener {
 
+    boolean isEnabled = false;
+
     @EventHandler
     public void onPlayerBreakBlock(BlockBreakEvent event) {
+        // オフになっているなら何もしない
+        if (!this.isEnabled) {
+            return;
+        }
+
         // 起点となるブロックの情報を取得
         Block baseBlock = event.getBlock();
         Material baseBlockMaterial = baseBlock.getType();
@@ -46,7 +54,7 @@ class BlockBreakListener implements Listener {
         // 探索開始
         List<Block> breakCandidates = new ArrayList<>();
         double maxDistance = 10;
-        int brokenBlockCount = 0;
+        int brokenBlockCount = 1;
         List<BlockFace> allFaces = Arrays.asList(BlockFace.values());
         breakCandidates.add(baseBlock);
         while (breakCandidates.size() > 0) {
@@ -67,7 +75,7 @@ class BlockBreakListener implements Listener {
             breakCandidates.addAll(breakCandidates.size(), nearbySameBlocks);
 
             // 破壊カウントを加算
-            brokenBlockCount += nearbySameBlocks.size() + 1;
+            brokenBlockCount += nearbySameBlocks.size();
         }
 
         // ツールの耐久を減らす
@@ -75,6 +83,28 @@ class BlockBreakListener implements Listener {
         int currentDamage = toolMetadata.getDamage();
         toolMetadata.setDamage(currentDamage + brokenBlockCount);
         usedTool.setItemMeta(toolMetadata);
+    }
+
+    @EventHandler
+    public void onPlayerInteractToVoid(PlayerInteractEvent event) {
+        // 虚空に向かって右クリックした場合のみ
+        if (event.getClickedBlock() != null) {
+            return;
+        }
+
+        // メインハンドがツールの場合のみ
+        String mainhandItemName = event.getPlayer().getInventory().getItemInMainHand().getType().name();
+        String suffixes[] = { "_AXE", "_HOE", "_PICKAXE", "_SHOVEL" };
+        if (!Arrays.asList(suffixes).stream().anyMatch(suffix -> mainhandItemName.endsWith(suffix))) {
+            return;
+        }
+
+        // モードを切り替える
+        this.isEnabled = !this.isEnabled;
+
+        // ユーザに通知
+        String message = this.isEnabled ? "enabled" : "disabled";
+        event.getPlayer().sendMessage("Miners tools: " + message);
     }
 
 }
