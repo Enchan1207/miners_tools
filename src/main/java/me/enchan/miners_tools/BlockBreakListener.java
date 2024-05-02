@@ -62,7 +62,7 @@ class BlockBreakListener implements Listener {
             Block candidateBlock = breakCandidates.remove(0);
             candidateBlock.breakNaturally(usedTool);
 
-            // 取り出した候補の周辺にある、起点と同種のブロックを検索
+            // 取り出した候補の周辺にある、起点と同種のブロックを探索
             // 無限ループを避けるため、起点からの距離が一定以上のものは含めない
             List<Block> nearbySameBlocks = allFaces.stream()
                     .map(face -> candidateBlock.getRelative(face))
@@ -70,12 +70,15 @@ class BlockBreakListener implements Listener {
                     .filter(block -> block.getLocation().distance(baseBlockLocation) <= maxDistance)
                     .collect(Collectors.toList());
 
-            // 検索したブロックをまとめて破壊し、候補リストの末尾に追加
+            // 探索したブロックをまとめて破壊し、実際に破壊できたブロックの数だけ破壊カウントを加算
             nearbySameBlocks.stream().forEach(block -> block.breakNaturally(usedTool));
-            breakCandidates.addAll(breakCandidates.size(), nearbySameBlocks);
+            brokenBlockCount += nearbySameBlocks.stream()
+                    .map(block -> block.breakNaturally(usedTool))
+                    .filter(wasBroken -> wasBroken)
+                    .count();
 
-            // 破壊カウントを加算
-            brokenBlockCount += nearbySameBlocks.size();
+            // 候補リストの末尾に追加
+            breakCandidates.addAll(breakCandidates.size(), nearbySameBlocks);
         }
 
         // ツールの耐久を減らす
@@ -83,6 +86,9 @@ class BlockBreakListener implements Listener {
         int currentDamage = toolMetadata.getDamage();
         toolMetadata.setDamage(currentDamage + brokenBlockCount);
         usedTool.setItemMeta(toolMetadata);
+
+        // 必要に応じて経験値を与える
+        event.getPlayer().giveExp(event.getExpToDrop() * brokenBlockCount);
     }
 
     @EventHandler
