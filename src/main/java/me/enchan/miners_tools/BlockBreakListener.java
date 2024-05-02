@@ -9,6 +9,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,20 +27,26 @@ class BlockBreakListener implements Listener {
 
     @EventHandler
     public void onPlayerBreakBlock(BlockBreakEvent event) {
-        // デフォルトの動作を遮断
-        event.setCancelled(true);
-
         // 起点となるブロックの情報を取得
         Block baseBlock = event.getBlock();
         Material baseBlockMaterial = baseBlock.getType();
         Location baseBlockLocation = baseBlock.getLocation();
 
-        // 破壊に使用したツールは?
+        // 破壊対象でないなら戻る
+        if (!baseBlockMaterial.name().endsWith("_ORE")) {
+            return;
+        }
+
+        // デフォルトの動作を遮断
+        event.setCancelled(true);
+
+        // 破壊に使用したツールを取得
         ItemStack usedTool = event.getPlayer().getInventory().getItemInMainHand();
 
         // 探索開始
         List<Block> breakCandidates = new ArrayList<>();
         double maxDistance = 10;
+        int brokenBlockCount = 0;
         List<BlockFace> allFaces = Arrays.asList(BlockFace.values());
         breakCandidates.add(baseBlock);
         while (breakCandidates.size() > 0) {
@@ -58,7 +65,16 @@ class BlockBreakListener implements Listener {
             // 検索したブロックをまとめて破壊し、候補リストの末尾に追加
             nearbySameBlocks.stream().forEach(block -> block.breakNaturally(usedTool));
             breakCandidates.addAll(breakCandidates.size(), nearbySameBlocks);
+
+            // 破壊カウントを加算
+            brokenBlockCount += nearbySameBlocks.size() + 1;
         }
+
+        // ツールの耐久を減らす
+        Damageable toolMetadata = (Damageable) usedTool.getItemMeta();
+        int currentDamage = toolMetadata.getDamage();
+        toolMetadata.setDamage(currentDamage + brokenBlockCount);
+        usedTool.setItemMeta(toolMetadata);
     }
 
 }
