@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 
 /**
@@ -50,11 +51,21 @@ class PlayerInteractionListener implements Listener {
         }
         ChainDestructionProvider destructionProvider = optionalProvider.get();
 
+        // 手に持っているのがツールなら、その耐久が切れるまで連鎖する
+        int maxBreakableCount = Integer.MAX_VALUE;
+        Damageable toolMetadata = (Damageable) usedTool.getItemMeta();
+        if (toolMetadata != null) {
+            int maxDurability = usedTool.getType().getMaxDurability();
+            int currentDamage = toolMetadata.getDamage();
+            maxBreakableCount = maxDurability - currentDamage;
+        }
+
         // デフォルトイベントをキャンセルして連鎖破壊開始
         event.setCancelled(true);
         List<Block> candidates = new ArrayList<>();
         candidates.add(baseBlock);
         int brokenBlockCount = 1;
+        boolean isToolBrokenDuringChain = false;
         while (candidates.size() > 0) {
             // 候補リストからひとつ取り出して破壊
             Block startBlock = candidates.remove(0);
@@ -62,18 +73,28 @@ class PlayerInteractionListener implements Listener {
 
             // 連鎖破壊候補を取得し、まとめて破壊
             List<Block> nearbyCandidates = destructionProvider.getNearbyCandidates(startBlock);
-            nearbyCandidates.stream().forEach(block -> block.breakNaturally(usedTool));
-            brokenBlockCount += nearbyCandidates.size();
+            long brokenCandidateCount = nearbyCandidates.stream()
+                    .filter(block -> block.breakNaturally(usedTool))
+                    .count();
+            brokenBlockCount += brokenCandidateCount;
+
+            // 破壊したブロックの数が耐久値的な限界を上回った場合は、ツールを壊してループを抜ける
+            if (toolMetadata != null && brokenBlockCount >= maxBreakableCount) {
+                isToolBrokenDuringChain = true;
+                usedTool.setAmount(usedTool.getAmount() - 1);
+                break;
+            }
 
             // 候補リストの末尾に追加
             candidates.addAll(candidates.size(), nearbyCandidates);
         }
 
-        // ツールの耐久を減らす
-        Damageable toolMetadata = (Damageable) usedTool.getItemMeta();
-        int currentDamage = toolMetadata.getDamage();
-        toolMetadata.setDamage(currentDamage + brokenBlockCount);
-        usedTool.setItemMeta(toolMetadata);
+        // 実際に破壊したブロックの数だけツールの耐久を減らす
+        if (toolMetadata != null && !isToolBrokenDuringChain) {
+            int currentDamage = toolMetadata.getDamage();
+            toolMetadata.setDamage(currentDamage + brokenBlockCount);
+            usedTool.setItemMeta(toolMetadata);
+        }
 
         // 必要に応じて経験値を与える
         event.getPlayer().giveExp(event.getExpToDrop() * brokenBlockCount);
