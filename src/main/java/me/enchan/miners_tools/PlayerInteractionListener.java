@@ -1,7 +1,6 @@
 package me.enchan.miners_tools;
 
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
@@ -10,12 +9,14 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 
+import me.enchan.miners_tools.recursive_breaker.DestructionProviderFactory;
+import me.enchan.miners_tools.recursive_breaker.ChainDestructionProvider;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
-import org.bukkit.Location;
 import org.bukkit.Material;
 
 /**
@@ -39,50 +40,33 @@ class PlayerInteractionListener implements Listener {
             return;
         }
 
-        // 起点となるブロックの情報を取得
+        // 起点となるブロックと破壊に使用したツールを取得し、適用可能な連鎖破壊プロバイダを探す
         Block baseBlock = event.getBlock();
-        Material baseBlockMaterial = baseBlock.getType();
-        Location baseBlockLocation = baseBlock.getLocation();
-
-        // 破壊対象でないなら戻る
-        if (!baseBlockMaterial.name().endsWith("_ORE")) {
+        ItemStack usedTool = event.getPlayer().getInventory().getItemInMainHand();
+        Optional<ChainDestructionProvider> optionalProvider = DestructionProviderFactory.queryProvider(baseBlock,
+                usedTool);
+        if (optionalProvider.isEmpty()) {
             return;
         }
+        ChainDestructionProvider destructionProvider = optionalProvider.get();
 
-        // デフォルトの動作を遮断
+        // デフォルトイベントをキャンセルして連鎖破壊開始
         event.setCancelled(true);
-
-        // 破壊に使用したツールを取得
-        ItemStack usedTool = event.getPlayer().getInventory().getItemInMainHand();
-
-        // 探索開始
-        List<Block> breakCandidates = new ArrayList<>();
-        double maxDistance = 10;
+        List<Block> candidates = new ArrayList<>();
+        candidates.add(baseBlock);
         int brokenBlockCount = 1;
-        List<BlockFace> allFaces = Arrays.asList(BlockFace.values());
-        breakCandidates.add(baseBlock);
-        while (breakCandidates.size() > 0) {
+        while (candidates.size() > 0) {
             // 候補リストからひとつ取り出して破壊
-            Block candidateBlock = breakCandidates.remove(0);
-            candidateBlock.breakNaturally(usedTool);
+            Block startBlock = candidates.remove(0);
+            startBlock.breakNaturally(usedTool);
 
-            // 取り出した候補の周辺にある、起点と同種のブロックを探索
-            // 無限ループを避けるため、起点からの距離が一定以上のものは含めない
-            List<Block> nearbySameBlocks = allFaces.stream()
-                    .map(face -> candidateBlock.getRelative(face))
-                    .filter(block -> block.getType() == baseBlockMaterial)
-                    .filter(block -> block.getLocation().distance(baseBlockLocation) <= maxDistance)
-                    .collect(Collectors.toList());
-
-            // 探索したブロックをまとめて破壊し、実際に破壊できたブロックの数だけ破壊カウントを加算
-            nearbySameBlocks.stream().forEach(block -> block.breakNaturally(usedTool));
-            brokenBlockCount += nearbySameBlocks.stream()
-                    .map(block -> block.breakNaturally(usedTool))
-                    .filter(wasBroken -> wasBroken)
-                    .count();
+            // 連鎖破壊候補を取得し、まとめて破壊
+            List<Block> nearbyCandidates = destructionProvider.getNearbyCandidates(startBlock);
+            nearbyCandidates.stream().forEach(block -> block.breakNaturally(usedTool));
+            brokenBlockCount += nearbyCandidates.size();
 
             // 候補リストの末尾に追加
-            breakCandidates.addAll(breakCandidates.size(), nearbySameBlocks);
+            candidates.addAll(candidates.size(), nearbyCandidates);
         }
 
         // ツールの耐久を減らす
