@@ -2,7 +2,10 @@ package me.enchan.miners_tools.chain_destructor;
 
 import java.util.Optional;
 
+import org.bukkit.Bukkit;
+import org.bukkit.Tag;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.Ageable;
 import org.bukkit.inventory.ItemStack;
 
 /**
@@ -31,7 +34,13 @@ public final class DestructionProviderFactory {
             return Optional.of(new ChainFellingProvider(base));
         }
 
-        // TODO: 作物自動収穫用のプロバイダを実装
+        // 作物かつ最大まで成長 -> 収穫プロバイダ
+        if (Tag.CROPS.isTagged(base.getType())) {
+            Ageable baseBlockData = (Ageable) base.getBlockData();
+            if (baseBlockData != null && baseBlockData.getAge() == baseBlockData.getMaximumAge()) {
+                return Optional.of(new ChainHarvestingProvider(base));
+            }
+        }
 
         return Optional.empty();
     }
