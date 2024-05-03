@@ -1,4 +1,4 @@
-package me.enchan.miners_tools.recursive_breaker;
+package me.enchan.miners_tools.chain_destructor;
 
 import java.util.Arrays;
 import java.util.List;

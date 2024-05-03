@@ -9,8 +9,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
 
-import me.enchan.miners_tools.recursive_breaker.DestructionProviderFactory;
-import me.enchan.miners_tools.recursive_breaker.ChainDestructionProvider;
+import me.enchan.miners_tools.chain_destructor.DestructionProviderFactory;
+import me.enchan.miners_tools.chain_destructor.ChainDestructionProvider;
 
 import java.util.ArrayList;
 import java.util.Arrays;
